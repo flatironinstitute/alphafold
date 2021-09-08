@@ -88,6 +88,16 @@ flags.DEFINE_integer('random_seed', None, 'The random seed for the data '
                      'that even if this is set, Alphafold may still not be '
                      'deterministic, because processes like GPU inference are '
                      'nondeterministic.')
+
+flags.DEFINE_enum('batch', 'all'
+                  ['features', 'fold', 'all'],
+                  'Choose to breakup multiple sequence alignment generation '
+                  'and folding in to two steps. Useful to only use GPU '
+                  'nodes/resources for folding to maximize utilization.'
+                  'Defaults to running both steps. all, runs both steps. features, '
+                  'runs just feature generation. fold, will check to see if '
+                  'features exist and continue with folding.')
+
 FLAGS = flags.FLAGS
 
 MAX_TEMPLATE_HITS = 20
@@ -112,7 +122,8 @@ def predict_structure(
     model_runners: Dict[str, model.RunModel],
     amber_relaxer: relax.AmberRelaxation,
     benchmark: bool,
-    random_seed: int):
+    random_seed: int,
+    batch: str ):
   """Predicts structure using AlphaFold for the given sequence."""
   timings = {}
   output_dir = os.path.join(output_dir_base, fasta_name)
@@ -122,17 +133,26 @@ def predict_structure(
   if not os.path.exists(msa_output_dir):
     os.makedirs(msa_output_dir)
 
+  features_output_path = os.path.join(output_dir, 'features.pkl')
+
   # Get features.
-  t_0 = time.time()
-  feature_dict = data_pipeline.process(
+  if batch is in [ 'all', 'features' ]:
+    t_0 = time.time()
+    feature_dict = data_pipeline.process(
       input_fasta_path=fasta_path,
       msa_output_dir=msa_output_dir)
-  timings['features'] = time.time() - t_0
+    timings['features'] = time.time() - t_0
 
-  # Write out features as a pickled dictionary.
-  features_output_path = os.path.join(output_dir, 'features.pkl')
-  with open(features_output_path, 'wb') as f:
-    pickle.dump(feature_dict, f, protocol=4)
+    # Write out features as a pickled dictionary.
+    with open(features_output_path, 'wb') as f:
+      pickle.dump(feature_dict, f, protocol=4)
+
+    if batch is 'features':
+      return None
+
+  elif batch is 'fold':
+    with open(features_output_path, 'rb') as f:
+      feature_dict = pickle.load( f, protocol=4)
 
   relaxed_pdbs = {}
   plddts = {}
@@ -279,6 +299,11 @@ def main(argv):
     random_seed = random.randrange(sys.maxsize)
   logging.info('Using random seed %d for the data pipeline', random_seed)
 
+  batch = FLAGS.batch
+  if batch is in ['all', 'features', 'fold']:
+    logging.info('Using batch mode: %d')
+
+
   # Predict structure for each of the sequences.
   for fasta_path, fasta_name in zip(FLAGS.fasta_paths, fasta_names):
     predict_structure(
@@ -289,7 +314,8 @@ def main(argv):
         model_runners=model_runners,
         amber_relaxer=amber_relaxer,
         benchmark=FLAGS.benchmark,
-        random_seed=random_seed)
+        random_seed=random_seed,
+        batch= batch )
 
 
 if __name__ == '__main__':
