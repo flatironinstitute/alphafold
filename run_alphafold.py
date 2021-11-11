@@ -89,7 +89,7 @@ flags.DEFINE_integer('random_seed', None, 'The random seed for the data '
                      'deterministic, because processes like GPU inference are '
                      'nondeterministic.')
 
-flags.DEFINE_enum('batch', 'all'
+flags.DEFINE_enum('batch', 'all',
                   ['features', 'fold', 'all'],
                   'Choose to breakup multiple sequence alignment generation '
                   'and folding in to two steps. Useful to only use GPU '
@@ -136,7 +136,7 @@ def predict_structure(
   features_output_path = os.path.join(output_dir, 'features.pkl')
 
   # Get features.
-  if batch is in [ 'all', 'features' ]:
+  if batch in ( 'all', 'features' ):
     t_0 = time.time()
     feature_dict = data_pipeline.process(
       input_fasta_path=fasta_path,
@@ -147,12 +147,14 @@ def predict_structure(
     with open(features_output_path, 'wb') as f:
       pickle.dump(feature_dict, f, protocol=4)
 
-    if batch is 'features':
+    # move on if we are only generating features
+    if batch == 'features':
       return None
 
-  elif batch is 'fold':
+  # resume protocol if we have already generated the features.pkl
+  elif batch == 'fold':
     with open(features_output_path, 'rb') as f:
-      feature_dict = pickle.load( f, protocol=4)
+      feature_dict = pickle.load( f )
 
   relaxed_pdbs = {}
   plddts = {}
@@ -300,8 +302,8 @@ def main(argv):
   logging.info('Using random seed %d for the data pipeline', random_seed)
 
   batch = FLAGS.batch
-  if batch is in ['all', 'features', 'fold']:
-    logging.info('Using batch mode: %d')
+  if batch in ('all', 'features', 'fold'):
+    logging.info('Using batch mode: %s', batch)
 
 
   # Predict structure for each of the sequences.
