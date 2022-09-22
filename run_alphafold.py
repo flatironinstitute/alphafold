@@ -115,9 +115,6 @@ flags.DEFINE_enum('batch', 'all',
                   'Defaults to running both steps. all, runs both steps. features, '
                   'runs just feature generation. fold, will check to see if '
                   'features exist and continue with folding.')
-flags.DEFINE_boolean('use_precomputed_msas', False, 'Whether to read MSAs that '
-                     'have been written to disk. WARNING: This will not check '
-                     'if the sequence, database or configuration have changed.')
 flags.DEFINE_integer('num_multimer_predictions_per_model', 5, 'How many '
                      'predictions (each with a different random seed) will be '
                      'generated per model. E.g. if this is 2 and there are 5 '
