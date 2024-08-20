@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG CUDA=12.2.2
-FROM nvidia/cuda:${CUDA}-cudnn8-runtime-ubuntu20.04
+ARG CUDA=12.4.1
+FROM nvidia/cuda:${CUDA}-cudnn-runtime-ubuntu20.04
+
 # FROM directive resets ARGS, so we specify again (the value is retained if
 # previously set).
 ARG CUDA
@@ -55,8 +56,8 @@ RUN wget -q -P /tmp \
 ENV PATH="/opt/conda/bin:$PATH"
 ENV LD_LIBRARY_PATH="/opt/conda/lib:$LD_LIBRARY_PATH"
 RUN conda install -qy conda==24.1.2 pip python=3.11 \
-    && conda install -y -c nvidia cuda=${CUDA_VERSION} \
-    && conda install -y -c conda-forge openmm=8.0.0 pdbfixer \
+    && conda install -y -c nvidia cuda=${CUDA} cuda-tools=${CUDA} cuda-toolkit=${CUDA} cuda-version=12.4 cuda-command-line-tools=${CUDA} cuda-compiler=${CUDA} cuda-runtime=${CUDA}
+RUN conda install -y -c conda-forge openmm=8.0.0 pdbfixer \
     && conda clean --all --force-pkgs-dirs --yes
 
 COPY . /app/alphafold
@@ -67,8 +68,8 @@ RUN wget -q -P /app/alphafold/alphafold/common/ \
 RUN pip3 install --upgrade pip --no-cache-dir \
     && pip3 install -r /app/alphafold/requirements.txt --no-cache-dir \
     && pip3 install --upgrade --no-cache-dir \
-      jax==0.4.26 \
-      jaxlib==0.4.26+cuda12.cudnn89 \
+      jax==0.4.29 \
+      jaxlib==0.4.29+cuda12.cudnn91 \
       -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 # Add SETUID bit to the ldconfig binary so that non-root users can run it.
